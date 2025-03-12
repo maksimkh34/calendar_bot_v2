@@ -1,0 +1,355 @@
+Отчет о проекте в директории: D:\Work\Python\calendar_bot_new\
+==================================================
+Файл: D:\Work\Python\calendar_bot_new\const.py
+Содержимое файла const.py:
+# const.py
+bot_token = "5750409427:AAHu-Um5p4Mi4mlpbEG8R8dp37003tBExZQ"
+
+--------------------------------------------------
+Файл: D:\Work\Python\calendar_bot_new\db.csv
+Содержимое файла db.csv:
+year,month,day,hour,minute,event
+2025,03,12,19,52,sdf
+
+--------------------------------------------------
+Файл: D:\Work\Python\calendar_bot_new\event.py
+Содержимое файла event.py:
+# event.py
+class Event:
+    def __init__(self, year, month, day, hour, minute, event_name):
+        self.year = year
+        self.month = month
+        self.day = day
+        self.hour = hour
+        self.minute = minute
+        self.event_name = event_name
+
+    def print_event(self):
+        print(f"Event printing...\n"
+              f"Date: {self.year}.{self.month}.{self.day}\n"
+              f"Time: {self.hour}:{self.minute}\n"
+              f"Event: {self.event_name}")
+
+--------------------------------------------------
+Файл: D:\Work\Python\calendar_bot_new\event_core.py
+Содержимое файла event_core.py:
+# event_core.py
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+import pandas as pd
+from event import Event
+
+def parse_event(text):
+    list1 = text.split(' ')
+    event_name = " ".join(list1[4:])
+    date = list1[1].split('.')
+    year, month, day = date[0], date[1], date[2]
+    time_ = list1[2].split(':')
+    hour, minute = time_[0], time_[1]
+    return Event(year, month, day, hour, minute, event_name)
+
+# event_core.py
+async def check_event(vnt, context, update) -> bool:
+    if int(vnt.year) < 2025:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Год указан неверно ({vnt.year})")
+        return False
+    elif int(vnt.month) <= 0 or int(vnt.month) > 12:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Месяц указан неверно ({vnt.month})")
+        return False
+    elif int(vnt.day) <= 0 or int(vnt.day) > 31:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"День указан неверно ({vnt.day})")
+        return False
+    elif int(vnt.hour) < 0 or int(vnt.hour) > 24:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Час указан неверно ({vnt.hour})")
+        return False
+    elif int(vnt.minute) < 0 or int(vnt.minute) > 60:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text=f"Минута указана неверно ({vnt.minute})")
+        return False
+    else:
+        return True
+def import_db():
+    try:
+        # Попытка прочитать файл
+        dbase = pd.read_csv("db.csv")
+        if dbase.empty:
+            # Если файл пустой, создаем новый DataFrame с заголовками
+            dbase = pd.DataFrame(columns=['year', 'month', 'day', 'hour', 'minute', 'event'])
+            dbase.to_csv("db.csv", index=False)
+            return []
+    except pd.errors.EmptyDataError:
+        # Если файл пустой, создаем новый DataFrame с заголовками
+        dbase = pd.DataFrame(columns=['year', 'month', 'day', 'hour', 'minute', 'event'])
+        dbase.to_csv("db.csv", index=False)
+        return []
+    except FileNotFoundError:
+        # Если файл отсутствует, создаем новый файл с заголовками
+        dbase = pd.DataFrame(columns=['year', 'month', 'day', 'hour', 'minute', 'event'])
+        dbase.to_csv("db.csv", index=False)
+        return []
+
+    # Если файл успешно прочитан, преобразуем его в список событий
+    events = []
+    years = dbase['year'].tolist()
+    months = dbase['month'].tolist()
+    days = dbase['day'].tolist()
+    hours = dbase['hour'].tolist()
+    minutes = dbase['minute'].tolist()
+    events_names = dbase['event'].tolist()
+    for i in range(len(dbase)):
+        x = Event(years[i], months[i], days[i], hours[i], minutes[i], events_names[i])
+        events.append(x)
+    return events
+
+--------------------------------------------------
+Файл: D:\Work\Python\calendar_bot_new\exporter.py
+Содержимое файла exporter.py:
+﻿import os
+# Списки для игнорируемых файлов и директорий
+ignore_files = ['.gitignore']  # Добавьте сюда файлы, которые нужно игнорировать
+ignore_dirs = ['__pycache__', '.venv', '.git', '.idea', 'log_dir']  # Добавьте сюда папки, которые нужно игнорировать
+
+
+def generate_report(root_dir):
+    project_report = []
+
+    def process_directory(directory):
+        for item in os.listdir(directory):
+            item_path = os.path.join(directory, item)
+
+            # Проверяем, нужно ли игнорировать файл или директорию
+            if os.path.isfile(item_path):
+                if item in ignore_files:
+                    continue
+                project_report.append(f"Файл: {item_path}")
+                try:
+                    with open(item_path, 'r', encoding='utf-8') as file:
+                        content = file.read()
+                        project_report.append(f"Содержимое файла {item}:\n{content}\n{'-' * 50}")
+                except Exception as e:
+                    project_report.append(f"Не удалось прочитать файл {item}: {e}\n")
+            elif os.path.isdir(item_path):
+                if item in ignore_dirs:
+                    continue
+                project_report.append(f"Директория: {item_path}")
+                process_directory(item_path)
+
+    project_report.append(f"Отчет о проекте в директории: {root_dir}\n{'=' * 50}")
+    process_directory(root_dir)
+    return "\n".join(project_report)
+
+
+if __name__ == "__main__":
+    project_root = 'D:\\Work\\Python\\calendar_bot_new\\'
+
+    if not os.path.exists(project_root):
+        print("Указанный путь не существует.")
+    else:
+        report = generate_report(project_root)
+        print(report)
+
+        # Сохранение отчета в файл
+        output_file = project_root + "project_report.txt"
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write(report)
+        print(f"Отчет успешно сохранен в файл: {output_file}")
+--------------------------------------------------
+Файл: D:\Work\Python\calendar_bot_new\handler_functions.py
+Содержимое файла handler_functions.py:
+# handler_functions.py
+from event_core import *
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+import pandas as pd
+from event import Event
+
+path_to_db = 'D:\\Work\\Python\\calendar_bot_new\\db.csv'
+
+async def start(update, context):
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Это бот-календарь. Он может планировать события, изменять уже запланированные, и удалять их, но пока не может оповещать о их наступлении...\n"
+             "Команды бота:\n"
+             "/add - Бот добавит событие\n"
+             "/check - Бот выводит все запланированные события\n"
+             "/edit - Бот выводит все события, а затем можно изменить текст выбранного события\n"
+             "/delete - Бот удаляет выбранное событие\n"
+             "/about - Описание бота\n"
+             "/help или /start - Вывести этот список еще раз"
+    )
+
+async def show_events(update, context):
+    await context.bot.send_message(chat_id=update.effective_chat.id, text="Загрузка событий...")
+    events = import_db()
+    for event in events:
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=f"Событие на {event.year}.{event.month}.{event.day}, {event.hour}:{event.minute} - {event.event_name}"
+        )
+    if not events:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="События не найдены!")
+    keyboard = [[InlineKeyboardButton("Добавить события", callback_data='3')]]
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Чтобы добавить новые события, введите /add",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def callback_handler(update, context):
+    query = update.callback_query
+    await query.answer()
+    if query.data == '1':
+        await start(update, context)
+    elif query.data == '2':
+        await show_events(update, context)
+    elif query.data == '3':
+        await add_event(update, context)
+    elif query.data.startswith('del_'):
+        index = int(query.data[4:])
+        db_df = pd.read_csv('db.csv')
+        db_df.drop(index=index, inplace=True)
+        db_df.to_csv('db.csv', index=False)
+        keyboard = [[InlineKeyboardButton("Показать запланированные события", callback_data='2')]]
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Событие удалено. Введите /check для просмотра текущих событий",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+    elif query.data.startswith('edt_'):
+        data = query.data.split('_')
+        index = int(data[1])
+        new_name = "_".join(data[2:])
+        db = pd.read_csv('db.csv')
+        db.at[index, 'event'] = new_name
+        db.to_csv('db.csv', index=False)
+        keyboard = [[InlineKeyboardButton("Показать запланированные события", callback_data='2')]]
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Событие изменено. Введите /check для просмотра текущих событий",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+async def unknown_command(update, context):
+    keyboard = [[InlineKeyboardButton("Показать команды", callback_data='1')]]
+    await update.message.reply_text(
+        "Команда не распознана. Введите /help, чтобы просмотреть все команды",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+
+async def add_event(update, context):
+    if not update.message or update.message.text == '/add':
+        await context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text="Введите данные нового события в формате:\n"
+                 "/add YYYY.MM.DD HH:MM - Событие\n"
+                 "Например: /add 2012.12.20 14:00 - День рождения"
+        )
+    else:
+        vnt = parse_event(update.message.text)
+        if len(update.message.text) < 25:
+            await update.message.reply_text("Событие задано неверно. Введите /add для справки")
+        elif not await check_event(vnt, context, update):
+            await update.message.reply_text("Событие задано неверно. Введите /add для справки")
+        else:
+            dict_event = {
+                'year': vnt.year,
+                'month': vnt.month,
+                'day': vnt.day,
+                'hour': vnt.hour,
+                'minute': vnt.minute,
+                'event': vnt.event_name
+            }
+            old_db = pd.read_csv('db.csv')
+            new_db = pd.concat([old_db, pd.DataFrame([dict_event])], ignore_index=True)
+            new_db.to_csv('db.csv', index=False)
+            keyboard = [[InlineKeyboardButton("Показать запланированные события", callback_data='2')]]
+            await update.message.reply_text(
+                "Событие успешно добавлено. Введите /check для просмотра текущих событий",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+
+
+async def delete_event(update, context):
+    events = import_db()
+    keyboard = []
+    if not events:
+        await context.bot.send_message(chat_id=update.effective_chat.id, text="События не найдены!")
+    else:
+        for i, event in enumerate(events):
+            keyboard.append([InlineKeyboardButton(
+                f"{event.event_name} ({event.year}.{event.month}.{event.day}, {event.hour}:{event.minute})",
+                callback_data=f'del_{i}'
+            )])
+        await update.message.reply_text(
+            "Какое событие требуется удалить?",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+
+async def about(update, context):
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text="Developed by https://github.com/maksimkh34\nGitHub: https://github.com/maksimkh34/calendar_bot"
+    )
+
+async def edit_event(update, context):
+    events = import_db()
+    keyboard = []
+    new_event_name = update.message.text[6:]
+    if update.message.text == '/edit':
+        await update.message.reply_text("Команда используется в формате /edit 'Новый текст.")
+    else:
+        if not events:
+            await context.bot.send_message(chat_id=update.effective_chat.id, text="События не найдены!")
+        else:
+            for i, event in enumerate(events):
+                keyboard.append([InlineKeyboardButton(
+                    f"{event.event_name} ({event.year}.{event.month}.{event.day}, {event.hour}:{event.minute})",
+                    callback_data=f"edt_{i}_{new_event_name}"
+                )])
+            await update.message.reply_text(
+                "Какое событие требуется изменить?",
+                reply_markup=InlineKeyboardMarkup(keyboard)
+            )
+
+--------------------------------------------------
+Файл: D:\Work\Python\calendar_bot_new\main.py
+Содержимое файла main.py:
+﻿# main.py
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, filters
+from const import bot_token
+from handler_functions import *
+from datetime import datetime
+
+# Initializing bot
+# Текущее время
+d = datetime.now()
+print(f"Bot init finished. ({d.time().hour}:{d.time().minute}:{d.time().second})")
+
+# Создаем объект приложения
+application = Application.builder().token(bot_token).build()
+
+# Handlers
+button_help_handler = CallbackQueryHandler(callback_handler)
+start_handler = CommandHandler('start', start)
+help_handler = CommandHandler('help', start)
+unknown_handler = MessageHandler(filters.COMMAND, unknown_command)
+show_events_handler = CommandHandler('check', show_events)
+add_handler = CommandHandler('add', add_event)
+delete_event_handler = CommandHandler('delete', delete_event)
+about_handler = CommandHandler('about', about)
+edit_event_handler = CommandHandler('edit', edit_event)
+
+# Adding handlers
+application.add_handler(start_handler)
+application.add_handler(help_handler)
+application.add_handler(button_help_handler)
+application.add_handler(show_events_handler)
+application.add_handler(add_handler)
+application.add_handler(delete_event_handler)
+application.add_handler(about_handler)
+application.add_handler(edit_event_handler)
+application.add_handler(unknown_handler)  # Default handler
+
+# Starting polling
+print("Polling started... ")
+application.run_polling()
+print("Stopped.")
+--------------------------------------------------
